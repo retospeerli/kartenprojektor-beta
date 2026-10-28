@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f8">
+  <title>Grossrelief | Kartenprojektor v5.10</title>
+  <link rel="stylesheet" href="./style.v5.10.css">
+  <script defer src="./core.v5.10.js"></script>
+  <script defer src="./hydro.v5.10.js"></script>
+  <script defer src="./terrain.v5.10.js"></script>
+  <script defer src="./app.v5.10.js"></script>
+</head>
+<body>
+<svg class="municipalSvg" width="0" height="0" aria-hidden="true"><defs><clipPath id="municipalClipGlobal" clipPathUnits="objectBoundingBox"><path id="municipalPathGlobal" fill-rule="evenodd" clip-rule="evenodd"></path></clipPath></defs></svg>
+<div class="app studio">
+  <header class="studioHeader">
+    <div class="studioBrand"><div class="brandLogo" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="brandText"><strong>GROSSRELIEF</strong><span>Kartenprojektor <b>v5.10</b></span></div></div>
+    <div class="studioActions">
+      <div class="fileMenuAnchor">
+        <button type="button" id="filesMenuToggle" class="toolButton" aria-haspopup="true" aria-expanded="false" aria-controls="filesMenu"><span class="buttonSymbol" aria-hidden="true">⇅</span> Dateien <span class="chevron" aria-hidden="true">⌄</span></button>
+        <div id="filesMenu" class="filePopup" role="group" aria-label="Dateien importieren oder exportieren" hidden>
+          <div class="popupTop"><strong>Dateien</strong><button type="button" id="closeFilesMenu" class="iconButton" aria-label="Dateimenü schliessen">×</button></div>
+          <div class="popupSectionLabel">IMPORTIEREN</div>
+          <label id="dropZoneCsv" class="popupAction filetarget" for="layoutFile"><span class="actionIcon">▤</span><span><strong>Layout-CSV laden</strong><small id="fileTitle">layout.csv</small></span></label>
+          <input id="layoutFile" type="file" accept=".csv,text/csv" hidden>
+          <label id="dropZoneImages" class="popupAction filetarget" for="imageFiles"><span class="actionIcon">▧</span><span><strong>Kartenbilder laden</strong><small>PNG · JPG · WebP</small></span></label>
+          <input id="imageFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
+          <label class="popupAction filetarget" for="calibrationFile"><span class="actionIcon">⌖</span><span><strong>Kalibrierung laden</strong><small>JSON</small></span></label>
+          <input id="calibrationFile" type="file" accept=".json,application/json" hidden>
+          <label class="popupAction filetarget" for="terrainFiles"><span class="actionIcon">▰</span><span><strong>STL-Dateien laden</strong><small>Geländemodell (optional)</small></span></label>
+          <input id="terrainFiles" type="file" accept=".stl" multiple hidden>
+          <button id="loadExample" class="popupAction" type="button"><span class="actionIcon">↗</span><span><strong>Beispiel-CSV öffnen</strong></span></button>
+          <div id="uploadInfo" class="popupNote">Keine eigenen Kartenbilder geladen</div>
+          <div class="popupSectionLabel bordered">EXPORTIEREN</div>
+          <label class="exportSelect">Bildauflösung <select id="exportSize" aria-label="Auflösung für Bildexport"><option value="1200">1200 px</option><option value="2400" selected>2400 px</option><option value="3200">3200 px</option><option value="4096">4096 px</option></select></label>
+          <button type="button" id="downloadCurrent" class="popupAction" disabled><span class="actionIcon">↓</span><span><strong>Sichtbare Karte als PNG</strong></span></button>
+          <button type="button" id="downloadAll" class="popupAction" disabled><span class="actionIcon">↓</span><span><strong>Einzelkarten als ZIP</strong></span></button>
+          <button type="button" id="saveCalibration" class="popupAction" disabled><span class="actionIcon">↓</span><span><strong>Kalibrierung als JSON</strong></span></button>
+          <button type="button" id="exportHeightmap" class="popupAction" disabled><span class="actionIcon">↓</span><span><strong>Höhenmodell speichern</strong></span></button>
+        </div>
+      </div>
+      <button type="button" class="iconButton headerInfo" data-info="overview" aria-label="Information zur Bedienung" title="Information">i</button>
+      <button id="openProjector" type="button" class="primaryAction" disabled><span aria-hidden="true">▣</span> Projektor starten</button>
+    </div>
+  </header>
+  <div class="studioBody">
+    <main class="main workArea">
+      <div class="topline">
+        <div><div class="eyebrow">KARTENANSICHT</div><h1>Vorschau</h1></div>
+        <div id="status" class="status" role="status"><span class="dot"></span><span id="statusText">Layout oder Kartenbilder laden</span></div>
+      </div>
+      <div class="canvascontainer">
+        <div id="previewFrame" class="previewframe">
+          <div id="previewWhite" class="mapWhite" hidden></div>
+          <div id="previewTiles" class="previewTiles" hidden></div>
+          <div id="previewHydro" class="preciseHydro" hidden></div>
+          <div id="emptyPreview" class="emptyPreview"><div class="emptyGlyph" aria-hidden="true">◈</div><strong>Keine Karte geladen</strong><p>Über <b>Dateien</b> ein Layout oder Kartenbild öffnen.</p><button id="emptyLoad" type="button" class="emptyAction">Dateien öffnen</button></div>
+          <div class="previewcorner tl">NW</div><div class="previewcorner tr">NE</div><div class="previewcorner br">SE</div><div class="previewcorner bl">SW</div>
+        </div>
+      </div>
+      <div class="underpreview">
+        <div class="imageMeta"><strong id="imageSize">–</strong><span id="modeInfo">Kein Kartenmaterial geladen</span></div>
+        <button id="reload" type="button" class="subtleButton" disabled title="Karten von swisstopo neu laden">↻ Aktualisieren</button>
+      </div>
+      <section class="layerPanel" aria-labelledby="layerTitle">
+        <div class="sectionTop"><div class="sectionHeading"><h2 id="layerTitle">Kartenebenen</h2><span class="panelTag">Mehrfachauswahl</span></div><button type="button" class="iconButton" data-info="layers" title="Ebenen und Tastenkürzel" aria-label="Information zu Kartenebenen">i</button></div>
+        <div id="layerList" class="layerlist" aria-label="Kartenebenen 1 bis 9"></div>
+        <div id="historicLayerInfo" class="minorNote" hidden>Im historischen Modus ist die Zeitreisekarte auswählbar.</div>
+        <input type="hidden" id="waterDetail" value="wichtig">
+        <div class="uploadsHeader"><span>Eigene Kartenbilder</span><button type="button" class="iconButton" data-info="uploads" aria-label="Information zu eigenen Kartenbildern">i</button></div>
+        <div id="uploadLayerList" class="layerlist uploadlist"></div>
+      </section>
+      <footer class="studioFooter">Kartendaten © swisstopo · Verarbeitung im Browser · GitHub Pages</footer>
+    </main>
+    <aside class="sidebar propertiesPanel" aria-label="Projekt- und Karteneinstellungen">
+      <section class="settingsCard">
+        <div class="settingsHead"><h2>Kartenmodus</h2><button type="button" class="iconButton" data-info="modes" title="Kartenmodus" aria-label="Information zum Kartenmodus">i</button></div>
+        <div class="modePicker" role="group" aria-label="Kartenmodus wählen"><button id="modeToday" class="modeButton active" type="button" aria-pressed="true">Heute</button><button id="modeHistoric" class="modeButton" type="button" aria-pressed="false">Historisch</button></div>
+        <div id="todayOptions" class="modeOptions"><label class="checkLine"><input id="waedenswilOnly" type="checkbox"><span>Nur Wädenswil</span></label><p id="boundaryStatus" class="tinyStatus" role="status"></p></div>
+        <div id="historicOptions" class="modeOptions" hidden><div class="fieldRow"><label for="historicYear">Kartenjahr</label><strong id="historicYearLabel">1900</strong></div><input type="range" id="historicYear" min="1844" max="2026" step="1" value="1900"><div class="yearPresets" id="yearPresets"></div></div>
+      </section>
+      <section class="settingsCard">
+        <div class="settingsHead"><h2>Geländekorrektur</h2><button type="button" class="iconButton" data-info="terrain" title="3D-Geländekorrektur" aria-label="Information zur Geländekorrektur">i</button></div>
+        <div class="terrainOptions"><label class="checkLine"><input id="terrainEnabled" type="checkbox"><span>3D-Korrektur aktiv</span></label><div class="heightControl"><label for="projectorHeight">Projektorhöhe</label><div class="numberUnit"><input id="projectorHeight" type="number" value="105" min="20" max="500" step="1" inputmode="decimal"><span>cm</span></div></div><p id="terrainStatus" class="tinyStatus" role="status">Standard-Höhenmodell wird nach dem CSV-Import geladen.</p></div>
+      </section>
+      <section class="settingsCard projectCard">
+        <div class="settingsHead"><h2>Relief</h2><button type="button" class="iconButton" data-info="relief" title="Relief-Informationen" aria-label="Information zum Relief">i</button></div>
+        <div id="layoutInfo" class="layoutinfo" hidden><div class="layouthead"><span class="statuspill">✓ Geladen</span><strong id="layoutName">–</strong></div><div class="metricline"><span>Segmente</span><b id="segments">–</b></div><div class="metricline"><span>Modell</span><b id="modelSize">–</b></div><div class="metricline"><span>Gebiet</span><b id="areaSize">–</b></div><details><summary>LV95-Koordinaten</summary><div id="coordinates" class="coords">–</div></details></div>
+        <div id="emptyLayoutMessage" class="smallPlaceholder">Noch kein Layout geladen</div>
+      </section>
+      <details class="diagnostics"><summary>Datenstatus</summary><p id="hydroStatus" class="tinyStatus" role="status">Gewässerdaten noch nicht geladen.</p><details id="hydroAudit" hidden><summary>Gewässerdetails</summary><div id="hydroAuditRows"></div></details></details>
+      <div class="propertiesHelp"><button type="button" class="textInfoButton" data-info="calibration">ⓘ Kalibrierung und Tastatur</button></div>
+    </aside>
+  </div>
+</div>
+<dialog id="infoDialog" class="infoDialog" aria-labelledby="infoTitle"><div class="dialogHead"><h2 id="infoTitle">Information</h2><button type="button" id="closeInfoDialog" class="iconButton" aria-label="Fenster schliessen">×</button></div><div id="infoContent" class="dialogContent"></div><div class="dialogFooter"><button type="button" id="confirmInfoDialog" class="toolButton">Schliessen</button></div></dialog>
+<section id="projector" class="projectorview" hidden aria-label="Projektion auf das Relief">
+  <svg class="municipalSvg" width="0" height="0" aria-hidden="true"><defs><clipPath id="municipalClip" clipPathUnits="objectBoundingBox"><path id="municipalPath" fill-rule="evenodd" clip-rule="evenodd"></path></clipPath></defs></svg>
+  <div id="projectionWhite" class="mapWhite projectionWhite" hidden></div>
+  <div id="projectionTiles" class="projectionTiles"></div>
+  <div id="projectionHydro" class="preciseHydro projectionHydro" hidden></div>
+  <canvas id="terrainProjection" class="terrainProjection" hidden aria-label="Höhenkorrigierte Projektion"></canvas>
+  <svg id="cornerLines" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" preserveAspectRatio="none" hidden>
+    <polygon id="outline" points="" fill="none" stroke="#f3f9ee" stroke-width="2.5" stroke-dasharray="8 8" vector-effect="non-scaling-stroke"></polygon>
+  </svg>
+  <!-- Festes rotes Zentrum: unabhängig von den beweglichen Kartenecken. -->
+  <div id="screenCenterCross" class="screenCenterCross" hidden aria-hidden="true"></div>
+  <div id="crosshairs" class="crosshairs" hidden>
+    <div class="cornerCross" data-index="0" tabindex="0" role="button" aria-label="Gelbes Fadenkreuz oben links feinjustieren"><span></span></div>
+    <div class="cornerCross" data-index="1" tabindex="0" role="button" aria-label="Gelbes Fadenkreuz oben rechts feinjustieren"><span></span></div>
+    <div class="cornerCross" data-index="2" tabindex="0" role="button" aria-label="Gelbes Fadenkreuz unten rechts feinjustieren"><span></span></div>
+    <div class="cornerCross" data-index="3" tabindex="0" role="button" aria-label="Gelbes Fadenkreuz unten links feinjustieren"><span></span></div>
+  </div>
+  <div id="handles" class="handles" hidden>
+    <div class="handle" data-index="0" tabindex="0" aria-label="Obere linke Ecke verschieben">OL</div>
+    <div class="handle" data-index="1" tabindex="0" aria-label="Obere rechte Ecke verschieben">OR</div>
+    <div class="handle" data-index="2" tabindex="0" aria-label="Untere rechte Ecke verschieben">UR</div>
+    <div class="handle" data-index="3" tabindex="0" aria-label="Untere linke Ecke verschieben">UL</div>
+  </div>
+
+  <!-- Schmale Projektor-Leiste: nur Kartenwahl, Kalibrierung und zurück. -->
+  <nav class="projectorRail" id="projectorDock" aria-label="Karten und Projektor-Steuerung">
+    <button type="button" class="railBack" id="exitProjector" title="Zurück zur Startansicht (Esc)" aria-label="Zum Hauptmenü zurückkehren">
+      <span aria-hidden="true">↩</span><small>Menü</small>
+    </button>
+    <div class="railTitle">Modus</div>
+    <div class="railModes"><button id="railToday" type="button" title="Aktuelle Karten (H)">Heute</button><button id="railHistoric" type="button" title="Historische Karten (H)">Früher</button></div>
+    <div id="railHistoricYear" class="railHistoricYear" hidden><span id="railYearValue">1900</span><div><button type="button" id="railYearBack" title="10 Jahre zurück">−10</button><button type="button" id="railYearForward" title="10 Jahre vorwärts">+10</button></div></div>
+    <div class="railTitle">Karten</div>
+    <div id="projectorLayers" class="projectorLayers"></div>
+    <div class="railPages" id="railPages" hidden>
+      <button id="prevPage" aria-label="Vorherige Kartenseite" title="Vorherige Kartenseite">‹</button>
+      <span id="pageIndicator">1/1</span>
+      <button id="nextPage" aria-label="Nächste Kartenseite" title="Nächste Kartenseite">›</button>
+    </div>
+    <div class="railBottom">
+      <button type="button" id="toggleHandles" class="railAction" title="Vier Ecken kalibrieren (K)">⌗<small>Ecken</small></button>
+      <button type="button" id="resetCorners" class="railAction" title="Kalibrierung zurücksetzen" hidden>↺<small>Reset</small></button>
+      <button type="button" id="toggleDock" class="railAction" title="Leiste ausblenden (T)">⇥<small>Leiste</small></button>
+    </div>
+  </nav>
+  <button type="button" id="showDock" class="showDock" title="Kartenleiste wieder anzeigen (T)" hidden aria-label="Kartenleiste zeigen">☰</button>
+  <div id="projectorError" class="projectorError" hidden></div>
+</section>
+</body>
+</html>
